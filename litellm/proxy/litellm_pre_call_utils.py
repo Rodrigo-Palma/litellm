@@ -302,6 +302,27 @@ def _key_or_team_allows_client_pricing_override(
     )
 
 
+def _strip_client_message_redaction_opt_out(data: dict[str, Any]) -> None:
+    stripped: list[str] = []
+    if "turn_off_message_logging" in data and _is_false_like(data["turn_off_message_logging"]):
+        stripped.append("turn_off_message_logging")
+        data.pop("turn_off_message_logging", None)
+    for metadata_key in ("metadata", "litellm_metadata"):
+        metadata = data.get(metadata_key)
+        if not isinstance(metadata, dict):
+            continue
+        if "turn_off_message_logging" in metadata and _is_false_like(metadata["turn_off_message_logging"]):
+            stripped.append(f"{metadata_key}.turn_off_message_logging")
+            metadata.pop("turn_off_message_logging", None)
+    if stripped:
+        verbose_proxy_logger.debug(
+            "Stripped client-supplied message-redaction opt-out fields from request body: %s. "
+            "Set `allow_client_message_redaction_opt_out: true` on the key or team metadata "
+            "to keep these values.",
+            ", ".join(stripped),
+        )
+
+
 def _strip_client_pricing_overrides(data: Dict[str, Any]) -> None:
     """Drop pricing overrides from the request body and any metadata variant.
 
@@ -1308,13 +1329,6 @@ async def add_litellm_data_to_request(
         _headers,
         allow_client_message_redaction_opt_out=_allow_client_message_redaction_opt_out,
     )
-    if (
-        not _allow_client_message_redaction_opt_out
-        and litellm.turn_off_message_logging is True
-        and "turn_off_message_logging" in data
-        and _is_false_like(data["turn_off_message_logging"])
-    ):
-        data.pop("turn_off_message_logging", None)
     verbose_proxy_logger.debug(f"Request Headers: {_headers}")
     verbose_proxy_logger.debug(f"Raw Headers: {_raw_headers}")
 
@@ -1465,6 +1479,9 @@ async def add_litellm_data_to_request(
     # would silently skip the field.
     if not _key_or_team_allows_client_pricing_override(user_api_key_dict):
         _strip_client_pricing_overrides(data)
+
+    if not _allow_client_message_redaction_opt_out and litellm.turn_off_message_logging is True:
+        _strip_client_message_redaction_opt_out(data)
 
     # Fill in the proxy_server_request body snapshot now that metadata has
     # been parsed. Consumers (standard_logging_payload, lago,

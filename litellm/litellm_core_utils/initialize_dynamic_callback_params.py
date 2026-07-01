@@ -55,6 +55,7 @@ _supported_callback_params = [
     "dd_site",
     "dd_agent_host",
     "dd_agent_port",
+    "turn_off_message_logging",
 ]
 
 _request_blocked_callback_params = {

@@ -100,11 +100,17 @@ def test_non_string_values_are_not_flagged():
     assert params.get("langsmith_sampling_rate") == 0.5
 
 
-def test_turn_off_message_logging_not_extracted_from_request():
-    """turn_off_message_logging is admin-only — must not be settable via request."""
-    kwargs = {"turn_off_message_logging": True}
+@pytest.mark.parametrize(
+    "kwargs,expected",
+    [
+        ({"turn_off_message_logging": False}, False),
+        ({"turn_off_message_logging": "False"}, "False"),
+        ({"metadata": {"turn_off_message_logging": True}}, True),
+    ],
+)
+def test_turn_off_message_logging_extracted_from_kwargs(kwargs, expected):
     params = initialize_standard_callback_dynamic_params(kwargs)
-    assert params.get("turn_off_message_logging") is None
+    assert params.get("turn_off_message_logging") == expected
 
 
 def test_empty_kwargs_returns_empty_params():

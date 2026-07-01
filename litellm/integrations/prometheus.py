@@ -57,7 +57,6 @@ from litellm.types.integrations.prometheus import (
 )
 from litellm.types.utils import (
     StandardLoggingGuardrailInformation,
-    StandardLoggingMCPToolCall,
     StandardLoggingPayload,
 )
 
@@ -1553,8 +1552,8 @@ class PrometheusLogger(CustomLogger):
         metadata = standard_logging_payload.get("metadata")
         if not isinstance(metadata, dict):
             return
-        mcp_meta: Optional[StandardLoggingMCPToolCall] = metadata.get("mcp_tool_call_metadata")
-        if mcp_meta is None:
+        mcp_meta = metadata.get("mcp_tool_call_metadata")
+        if not isinstance(mcp_meta, dict):
             return
 
         mcp_enum_values = UserAPIKeyLabelValues(
